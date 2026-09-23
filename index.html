@@ -6,7 +6,7 @@
 <title>Alhyakel Inventory</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
@@ -295,7 +295,16 @@ $("#loginForm").addEventListener("submit", async e => {
   let id = $("#lid").value.trim().toLowerCase();
   const email = id.includes("@") ? id : `${id}@${LOGIN_DOMAIN}`;
   const { error } = await sb.auth.signInWithPassword({ email, password: $("#lpw").value });
-  if (error) { $("#loginErr").textContent = "Wrong user ID or password."; return; }
+  if (error) {
+    const m = error.message || "";
+    $("#loginErr").textContent =
+      /invalid login credentials/i.test(m) ? `Wrong user ID or password. (Tried: ${email})` :
+      /email not confirmed/i.test(m) ? "This user is not confirmed. In Supabase, turn off 'Confirm email' or recreate the user with 'Auto confirm' ticked." :
+      /api key|apikey|jwt/i.test(m) ? "Portal cannot connect: the Supabase key in index.html is wrong." :
+      /fetch|network/i.test(m) ? "Portal cannot reach Supabase: check SUPABASE_URL in index.html." :
+      "Login failed: " + m;
+    return;
+  }
   await boot();
 });
 $("#logout").onclick = async () => { await sb.auth.signOut(); location.reload(); };
